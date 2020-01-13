@@ -225,3 +225,14 @@ $ make
     + conf
         + cluster-enabled yes
         + cluster
+***
+
+
+## Distributed Lock
+#### Overview
+- Distributed Lock is lock for resourced shared by multiple instance of application
+- Only one instance can access the resource at that moment
+#### Implementation
+- Lock: setnx to create the lock
+- Release: set expire time or delete keys
+        
