@@ -240,4 +240,8 @@ $ make
 - Risk
     + redis or server down between setex and setnx
     + key never get release
+    + lua script to run as atomic operation
+#### LUA
+- after redis 2.6.0 version
+- run atomic operation
         

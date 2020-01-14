@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 public class ClusterLockJob {
 
 
-    @Scheduled(cron = "0/5 * * * * *")
+//    @Scheduled(cron = "0/5 * * * * *")
     public void lock() {
 
         System.out.println("enter job " + System.currentTimeMillis());

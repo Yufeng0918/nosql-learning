@@ -121,6 +121,14 @@ public class RedisService {
         }
     }
 
+
+    public Object genValue(final String key) {
+        Object result = null;
+        ValueOperations<String, String> operations = redisTemplate.opsForValue();
+        result = operations.get(key);
+        return result;
+    }
+
     /**
      * 判断缓存中是否有对应的value
      *
