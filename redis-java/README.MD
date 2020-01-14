@@ -232,7 +232,12 @@ $ make
 #### Overview
 - Distributed Lock is lock for resourced shared by multiple instance of application
 - Only one instance can access the resource at that moment
+- Must be ReentrantLock
 #### Implementation
 - Lock: setnx to create the lock
+- Timed: senex to set expire time
 - Release: set expire time or delete keys
+- Risk
+    + redis or server down between setex and setnx
+    + key never get release
         
