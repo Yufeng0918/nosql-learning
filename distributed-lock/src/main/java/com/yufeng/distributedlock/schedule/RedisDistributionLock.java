@@ -4,11 +4,17 @@ import com.yufeng.distributedlock.config.RedisService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.connection.RedisStringCommands;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.types.Expiration;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scripting.support.ResourceScriptSource;
 import org.springframework.stereotype.Service;
+import redis.clients.jedis.JedisCommands;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -19,7 +25,7 @@ import java.util.List;
 
 @Slf4j
 @Service
-public class LuaDistributionLock {
+public class RedisDistributionLock {
 
     @Autowired
     private RedisService redisService;
@@ -27,64 +33,54 @@ public class LuaDistributionLock {
     @Autowired
     private RedisTemplate redisTemplate;
 
-    private static String LOCK_PREFIX = "lua_";
+    private static String LOCK_PREFIX = "redis_";
 
     private DefaultRedisScript<Boolean> lockScript;
 
 
-//    @Scheduled(cron = "0/10 * * * * *")
+    @Scheduled(cron = "0/10 * * * * *")
     public void lockJob() {
 
-        String lock = LOCK_PREFIX + this.getClass().getCanonicalName();
-        boolean luaRet = false;
+        String lock = LOCK_PREFIX + "JedisNxExJob";
+        boolean lockRet = false;
+
         try {
+            lockRet = this.setLock(lock, 600);
 
-            luaRet = luaExpress(lock, getHostIp());
-
-
-            if (!luaRet) {
-                String value = (String)redisService.genValue(lock);
-                log.info("get lock fail,lock belong to:{}", value);
+            if (!lockRet) {
+                String value = (String) redisService.genValue(lock);
+                log.info("jedisLockJob get lock fail,lock belong to:{}", value);
                 return;
+            } else {
+                log.info("jedisLockJob start  lock lockNxExJob success");
+                Thread.sleep(5000);
             }
-
-            log.info("start lua lock lockNxExJob success");
-            Thread.sleep(5000);
-
         } catch (Exception e) {
-            log.error("lock lua error",e);
+            log.error("jedisLockJob lock error", e);
+
         } finally {
-            if (luaRet) {
-                log.info("release lua lock success");
-                unlock(lock, getHostIp());
+            if (lockRet) {
+                log.info("jedisLockJob release lock success");
+                redisService.remove(lock);
             }
         }
     }
 
-    public Boolean luaExpress(String key, String value) {
+    public Boolean setLock(String key, long expire) {
 
-        lockScript = new DefaultRedisScript<>();
-        lockScript.setScriptSource(new ResourceScriptSource(new ClassPathResource("add.lua")));
-        lockScript.setResultType(Boolean.class);
+        try {
+            Boolean result = (Boolean) redisTemplate.execute(new RedisCallback<Boolean>() {
+                @Override
+                public Boolean doInRedis(RedisConnection connection) throws DataAccessException {
+                    return connection.set(key.getBytes(), getHostIp().getBytes(), Expiration.seconds(expire), RedisStringCommands.SetOption.SET_IF_ABSENT);
+                }
+            });
 
-        List<Object> keyList = new ArrayList<>();
-        keyList.add(key);
-        keyList.add(value);
-        Boolean result = (Boolean)redisTemplate.execute(lockScript, keyList);
-        return result;
-    }
-
-    public Boolean unlock(String key, String value) {
-
-        lockScript = new DefaultRedisScript<>();
-        lockScript.setScriptSource(new ResourceScriptSource(new ClassPathResource("unlock.lua")));
-        lockScript.setResultType(Boolean.class);
-
-        List<Object> keyList = new ArrayList<>();
-        keyList.add(key);
-        keyList.add(value);
-        Boolean result = (Boolean)redisTemplate.execute(lockScript, keyList);
-        return result;
+            return result;
+        } catch (Exception e) {
+            log.error("error get lock");
+        }
+        return false;
     }
 
 
