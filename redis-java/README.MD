@@ -196,11 +196,12 @@ $ make
 ***        
         
   
-## Redis Cluster
+## Redis Master Slave
+#### Separation of Read & Write
 - Master-Slaver
     + master: write
     + slave: read
-    + disaster recovery    
+    + disaster recovery   
 - Config
     + slave include master config
     + daemonize yes
@@ -217,14 +218,110 @@ $ make
     + connect master and sent sync command
     + master send the rdb file to slave
     + slave reload rdb file
+    + synchronization
+        + SYNC
+            + before redis2.8
+            + master execute BSSAVE to generate RDB, consume master CPU, memory, IO
+            + master send the RDB to slave, consume bandwidth
+            + slave receive RDB and load RDB, block IO
+        + PSYNC 
+            + after redis2.8
+            + master and slave maintains replication offset
+            + master write data into replication backlog, default size 1M
+            + slave connect to master to compare the master ID connected and disconnected before
+            + master received slaveof command, slave compare master ID
+                + if this is 1st time connect to master, slave send PSYNC?-1 to do the FULLREPSYNC
+                + if this is not 1st time connect to master, slave send PSYNC runid offset to do the PartialSYNC
+                    + but if backlog is over 1M, slave need to do the FULLRESYNC
+                + repl-disable-tcp-nodelay
+                    + set to yes, delay in sync but save bandwidth, default is 40ms
+                    + set to no, less delay but increase bandwidth
+    + info replication to check master slave
+- Mannul Recovery
+    + slaveof no one: slave become master
+    + slaveof host port: slave to new master
+#### High Availability
+- Reserve Proxy: ngnix cluster via keeplived
+- Web Server: nginx auto dect the server unavaliable and redirect request to live sever
+- Cache: redis master to slave and sentinel
+- Database: master to slave
+#### Redis HA
+- Seninel monitor all servers
 - Sentinel
-    + sentinel.conf: sentinel monitor mymaster 127.0.0.1 6379 1
+    + configure sentinel.conf
     + redis-sentinel sentienl.conf
-- Cluster
-    + at least 3 master, 3 slave
-    + conf
-        + cluster-enabled yes
-        + cluster
+```
+# sentinel monitor master and agree master failure by number of sentinel
+sentinel monitor mymaster 127.0.0.1 6379 1
+sentinel down-after-milliseconds mymaster 10000
+# failover headbeat confirm
+sentinel failover-timeout mymaster 6000
+# number of slave to synchronized with master
+sentinel parallel-syncs mymaster 1
+```
+   + Subjectively Down adjustment
+        + if server diid not response in  "down-after-milliseconds"  period
+        + sentinel send ping, node return pong or loading or masterdown as node is still online
+        + slave only applicable to subjectively down
+        + once down master join back, the original master become slave of new master
+   + Objectively Down
+        + only applicable to master
+        + multi sentinel confirm node is SDOWN
+        + base strong quorum algorithm
+#### Backup
+- cool backup
+    + backup during downtime in certain point
+    + low cost
+    + high security
+- hot backup
+    + archivelog mode to backup data
+    + short duration
+    + backup data available
+    + high cost
+    + recover in second level
+#### Springboot Integration
+- connect via sentinel as redis cluster proxy
+```
+spring.redis.sentinel.master=mymaster
+spring.redis.sentinel.nodes=127.0.0.1:26379
+```
+***
+   
+   
+## Redis Cluster   
+#### Cluster
+- at least 3 master, 3 slave
+- conf
+    + cluster-enabled yes
+    + cluster
+- if master failed, slave become master
+- failure when A and A' down since a set of slots unavailable
+#### Config
+```
+daemonize yes
+port 7000
+cluster-enabled yes
+cluster-config-file node-7000.conf
+cluster-node-timeout 5000
+appendonly yes
+bind <internet ip>
+```
+#### Command
+- redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005 --cluster-replicas 1
+- redis-cli -p 7000 cluster nodes 
+#### Sharding
+- arrange 16384 slot
+- key calculate base CRC16
+- reshard command: redis-cli --cluster reshard 127.0.0.1:7000
+#### Spring Integration
+```
+spring.redis.cluster.nodes=127.0.0.1:7000,127.0.0.1:7001,127.0.0.1:7002,127.0.0.1:7003,127.0.0.1:7004,127.0.0.1:7005
+spring.redis.cluster.max-redirects=3
+spring.redis.lettuce.pool.max-active=1000
+spring.redis.lettuce.pool.max-idle=10
+spring.redis.lettuce.pool.min-idle=5
+spring.redis.lettuce.pool.max-wait=-1
+```
 ***
 
 
@@ -241,7 +338,15 @@ $ make
     + redis or server down between setex and setnx
     + key never get release
     + lua script to run as atomic operation
-#### LUA
-- after redis 2.6.0 version
-- run atomic operation
-        
+- Improved Solution
+    + Lock
+        + Lua
+            + after redis 2.6.0 version
+            + run atomic operation
+        + RedisConnection   
+            + run the native set key and expire in atomic operation
+    + Unlock
+        + Lua
+            + CompareAndSwap 
+            + compare the value
+            + only unlock or release key if value is expected
