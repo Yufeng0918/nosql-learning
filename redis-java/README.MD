@@ -171,22 +171,22 @@ $ make
 
 
 ## Redis Persistence
-- RDB Persist
-   + persist data time interval
-   + RDB conf in "save" session, period for snapshot
-   + high performance
-   + single file backup, fork the sub process with write-on-copy tech
-   + may loss data in HA
-   + load rdb file to restore the data
-   + auto save in shutdown, debug reload
-   + manual save
-    + save: blocking save
-    + bgsave: frok thread to save
-        + check if sub thread is runing aof or rdb
-            + Yes, return error
-            + No invoke rdbSaveBackgroud to fork sub thread to save
-   + implementation
-    + redis servercron schedule task to execute save
+#### RDB Persist
++ persist data time interval
++ RDB conf in "save" session, period for snapshot
++ high performance
++ single file backup, fork the sub process with write-on-copy tech
++ may loss data in HA
++ load rdb file to restore the data
++ auto save in shutdown, debug reload
++ manual save
++ save: blocking save
++ bgsave: frok thread to save
+    + check if sub thread is runing aof or rdb
+        + Yes, return error
+        + No invoke rdbSaveBackgroud to fork sub thread to save
++ implementation
++ redis servercron schedule task to execute save
 ```
 # save "" to disallow RDB
 save 900 1 # after 900 sec, at least 1 keys change
@@ -197,15 +197,35 @@ stop-writes-on-bgsave-error yes
 rdbcompression yes
 rdbchecksum yes
 ```
+#### AOF
++ persist data by by appending log
++ syn by per operation
++ append to log file before shutdown
+```
+# main config to open aof
+appendonly yes
 
-- AOF
-    + "appendonly yes" in conf file
-    + "appendfsync" define the append sequence, value is  [always|everysec|no]
-    + "auto-aof-rewrite-percentage": rewrite file compare to last file
-    + "auto-aof-rewrite-min-size": min file size
-    + persist data by by appending log
-    + syn by per operation
-    + append to log file before shutdown
+# file name
+appendfilename "appendonly.aof"
+
+# define the append sequence, value is  [always|everysec|no]
+# always: slow but safe, IO consumption high
+# everysec: sync every sec, fork sub thread to write command into aof_buf, flush into disk every sec
+# no: os backup if buffer is full
+appendfsync
+
+no-appendsync-on-rewrite no
+
+# trigger rewrite
+auto-aof-rewrite-percentage 100
+auto-aof-rewrite-min-size 64m
+
+# handle error logging, if aof file error
+# yes, logging and continue
+# no, do not execute and wait for repair
+aof-load-truncated yes
+aof-rewrite-incremental-fsync yes
+```
 ***        
         
   
