@@ -172,19 +172,32 @@ $ make
 
 ## Redis Persistence
 - RDB Persist
-    + persist data time interval
-    + RDB conf in "save" session
-        + save 900 1, after 900 sec, at least 1 keys change
-        + save 300 10, after 300 sec, at least 10 keys change
-        + save 60 10000, after 60 sec, at least 10000 keys change
-    + high performance
-    + single file backup, fork the sub process with write-on-copy tech
-    + may loss data in HA
-    + config
-        + stop-writes-on-bgsave-error yes
-        + rdbcompression yes
-        + rdbchecksum yes
-    + load rdb file to restore the data
+   + persist data time interval
+   + RDB conf in "save" session, period for snapshot
+   + high performance
+   + single file backup, fork the sub process with write-on-copy tech
+   + may loss data in HA
+   + load rdb file to restore the data
+   + auto save in shutdown, debug reload
+   + manual save
+    + save: blocking save
+    + bgsave: frok thread to save
+        + check if sub thread is runing aof or rdb
+            + Yes, return error
+            + No invoke rdbSaveBackgroud to fork sub thread to save
+   + implementation
+    + redis servercron schedule task to execute save
+```
+# save "" to disallow RDB
+save 900 1 # after 900 sec, at least 1 keys change
+save 300 10, after 300 sec, at least 10 keys change
+save 60 10000, after 60 sec, at least 10000 keys change
+
+stop-writes-on-bgsave-error yes
+rdbcompression yes
+rdbchecksum yes
+```
+
 - AOF
     + "appendonly yes" in conf file
     + "appendfsync" define the append sequence, value is  [always|everysec|no]
@@ -290,6 +303,8 @@ spring.redis.sentinel.nodes=127.0.0.1:26379
    
 ## Redis Cluster   
 #### Cluster
+- key hash by CRC16 then mod for 16384
+- only after redis 3.0
 - at least 3 master, 3 slave
 - conf
     + cluster-enabled yes
@@ -322,6 +337,43 @@ spring.redis.lettuce.pool.max-idle=10
 spring.redis.lettuce.pool.min-idle=5
 spring.redis.lettuce.pool.max-wait=-1
 ```
+#### Cluster Implementation
+- redis 
+    - redis cluster only after 3.0
+    - Gossip generate ping/pong
+    - blocking IO may counter issue when dynamic scale up
+- principal
+    - horizontal sharding or vetical sharding
+        + horizontal sharding to distrubted data in different server
+        + Twemproxy from twitter
+            + hash key and store data in different server
+    - disaster recover
+        + gossip to implment slave and master and replace master by slave in disaster
+#### Constant Hash
+- hash 
+    + hash value and mod by 2^32
+    + there is n nodes, each node holds 2^32/4
+    + master1 -> key2 -> master2 -> key3 -> master3 -> key4 -> master4 -> key1 -> master1
+        + master1 store key1, master2 store key2
+        + if master2 is down, the key2 flow in clock into master3
+- features
+    + monotonicity: original request map to original server or new server, but not other server
+    + spread
+        + if client only knows part of server, same user request may route to differnt server, this should be avoid
+        + ratio of this case should be relative low
+    + balance: balance of all hash distribute to all server
+- visual node distribution
+    + server has serval visual node
+    + visual node distributed equaly in hash ring
+#### Twemproxy
+- proxy server support redis and client
+- shading key into hash and distribute in different redis master and slave
+- dynamic delete the failure node
+- support hash algo
+    + md5, crc16, crc32, crc32a, murmur
+- support shading algo
+    + ketama, modula, random
+- client only communicate with proxy instead of redis master and slave
 ***
 
 
