@@ -43,9 +43,10 @@ public class RedPacketController {
         redPacketInfo.setRemainingPacket(totalNumber);
         redPacketInfo.setRemainingAmount(totalAmount);
         redPacketInfo.setCreateTime(new Date());
+        redPacketInfo.setUpdateTime(new Date());
         Long redPacketId = System.currentTimeMillis();
         redPacketInfo.setRedPacketId(redPacketId);
-        redPacketInfoMapper.insert(redPacketInfo);
+        redPacketInfoMapper.insertSelective(redPacketInfo);
 
         redisService.set(redPacketId + "_totalNumber", String.valueOf(totalNumber));
         redisService.set(redPacketId + "_totalAmount", String.valueOf(totalAmount));
