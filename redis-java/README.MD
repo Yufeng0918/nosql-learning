@@ -226,6 +226,28 @@ auto-aof-rewrite-min-size 64m
 aof-load-truncated yes
 aof-rewrite-incremental-fsync yes
 ```
+#### AOF vs RDF
+- sequence
+    - if aof exist, load aof
+    - otherwise, load rdf
+- implmentation
+    + rdf: snapshot of data
+    + aof: records every operation
+- rdb
+    + pos
+        + higher performance, master thread does not participant IO
+        + faster bootstrap
+    + cons
+        + rdf may lost data due to frequence
+        + fork may takes longer time if data size is huge
+- aof
+    + pos
+        + safe in data backup
+        + if aof file is too big, rewrite the file to minimize file size
+        + human readable 
+    + cos
+        + size is bigger
+        + aof may slow than rdb
 ***        
         
   
@@ -394,6 +416,10 @@ spring.redis.lettuce.pool.max-wait=-1
 - support shading algo
     + ketama, modula, random
 - client only communicate with proxy instead of redis master and slave
+#### Production Practise
+- enable rdb and aof
+- turn off persist if no sensitive info
+- enable cluster or master slave
 ***
 
 
@@ -422,3 +448,50 @@ spring.redis.lettuce.pool.max-wait=-1
             + CompareAndSwap 
             + compare the value
             + only unlock or release key if value is expected
+ ***
+ 
+ 
+ ## Expire Policy
+ #### lazy expire
+ - verify key expire when get the key
+ - CPU friendly but memory consumption
+ - expireIfNeed()
+ #### period expire
+ - create timer to delete key
+ #### Global Timer 
+ - global timer to check key expire
+ - CPU friendly and save memory space
+  - activeExpireCycle() by serverCron
+ ****
+ 
+ 
+## RED PACKET Production
+#### Database Design
+- packet info contains amount and quantity
+- packet leger info contains user grab records
+```
+CREATE TABLE `red_packet_record` (
+`id` int(11) NOT NULL AUTO_INCREMENT,
+`amount` int(11) NOT NULL DEFAULT '0' COMMENT '抢到红包的金额',
+`nick_name` varchar(32) NOT NULL DEFAULT '0' COMMENT '抢到红包的用户的用户名',
+`img_url` varchar(255) NOT NULL DEFAULT '0' COMMENT '抢到红包的用户的头像',
+`uid` int(20) NOT NULL DEFAULT '0' COMMENT '抢到红包用户的用户标识',
+`red_packet_id` bigint(11) NOT NULL DEFAULT '0' COMMENT '红包id，采用timestamp+5位随机
+数',
+`create_time` timestamp COMMENT '创建时间',
+`update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+COMMENT '更新时间', PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='抢红包记录表，抢一个红包插 入一条记录';
+
+
+CREATE TABLE `red_packet_info` (
+`id` int(11) NOT NULL AUTO_INCREMENT,
+`red_packet_id` bigint(11) NOT NULL DEFAULT 0 COMMENT '红包id，采用timestamp+5位随机数', `total_amount` int(11) NOT NULL DEFAULT 0 COMMENT '红包总金额，单位分',
+`total_packet` int(11) NOT NULL DEFAULT 0 COMMENT '红包总个数',
+`remaining_amount` int(11) NOT NULL DEFAULT 0 COMMENT '剩余红包金额，单位分', `remaining_packet` int(11) NOT NULL DEFAULT 0 COMMENT '剩余红包个数',
+`uid` int(20) NOT NULL DEFAULT 0 COMMENT '新建红包用户的用户标识',
+`create_time` timestamp COMMENT '创建时间',
+`update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+COMMENT '更新时间', PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='红包信息表，新建一个红包插 入一条记录';
+```

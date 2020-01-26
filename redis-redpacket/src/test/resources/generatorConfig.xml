@@ -24,7 +24,7 @@
 
 		<!-- gem entity -->
 		<!-- data -->
-		<javaModelGenerator targetPackage="com.yufeng.redpacket.domain"
+		<javaModelGenerator targetPackage="com.yufeng.redisredpacket.domain"
 			targetProject="./src/main/java">
 			<property name="enableSubPackages" value="true" />
 			<property name="trimStrings" value="false" />

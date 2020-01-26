@@ -1,15 +1,16 @@
-package com.yufeng.redpacket.controller;
+package com.yufeng.redisredpacket.controller;
 
-import com.yufeng.distributedlock.config.RedisService;
-import com.yufeng.redpacket.domain.RedPacketInfo;
-import com.yufeng.redpacket.domain.RedPacketRecord;
-import com.yufeng.redpacket.mapper.RedPacketInfoMapper;
-import com.yufeng.redpacket.mapper.RedPacketRecordMapper;
+
+
+import com.yufeng.redisredpacket.domain.RedPacketInfo;
+import com.yufeng.redisredpacket.domain.RedPacketRecord;
+import com.yufeng.redisredpacket.mapper.RedPacketInfoMapper;
+import com.yufeng.redisredpacket.mapper.RedPacketRecordMapper;
+import com.yufeng.redisredpacket.service.RedisService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Date;
 
