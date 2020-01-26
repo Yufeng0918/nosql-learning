@@ -334,4 +334,24 @@ public class RedisService {
         return ret;
     }
 
+    /**
+     * 写入缓存
+     *
+     * @param key
+     * @param value
+     * @return
+     */
+    public boolean decr(final String key, int value) {
+        boolean result = false;
+        try {
+            ValueOperations<Serializable, Object> operations = redisTemplate.opsForValue();
+            operations.increment(key,-value);
+            result = true;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+
 }
