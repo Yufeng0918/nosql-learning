@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
  */
 public class Generator {
 
-    @Test
+//    @Test
     public void generate() throws Exception {
         List<String> warnings = new ArrayList<String>();
         boolean overwrite = true;

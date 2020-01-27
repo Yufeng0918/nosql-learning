@@ -1,4 +1,22 @@
-GET http://localhost:8080//bloom/idExists?id=11
+GET http://localhost:8080/bloom/idExists?id=10
+#Accept: application/json
+#
+####
+
+
+GET http://localhost:8080/bloom/idExists?id=11
+Accept: application/json
+
+###
+
+
+GET http://localhost:8080/bloom/redisIdAdd?id=20
+Accept: application/json
+
+###
+
+
+GET http://localhost:8080/bloom/redisIdExist?id=15
 Accept: application/json
 
 ###
