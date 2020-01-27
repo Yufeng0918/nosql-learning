@@ -72,6 +72,26 @@ public interface RedPacketInfoMapper {
     })
     RedPacketInfo selectByPrimaryKey(Integer id);
 
+    @Select({
+            "select",
+            "id, red_packet_id, total_amount, total_packet, remaining_amount, remaining_packet, ",
+            "uid, create_time, update_time",
+            "from red_packet_info",
+            "where red_packet_id = #{redPacketId,jdbcType=INTEGER}"
+    })
+    @Results({
+            @Result(column="id", property="id", jdbcType=JdbcType.INTEGER, id=true),
+            @Result(column="red_packet_id", property="redPacketId", jdbcType=JdbcType.BIGINT),
+            @Result(column="total_amount", property="totalAmount", jdbcType=JdbcType.INTEGER),
+            @Result(column="total_packet", property="totalPacket", jdbcType=JdbcType.INTEGER),
+            @Result(column="remaining_amount", property="remainingAmount", jdbcType=JdbcType.INTEGER),
+            @Result(column="remaining_packet", property="remainingPacket", jdbcType=JdbcType.INTEGER),
+            @Result(column="uid", property="uid", jdbcType=JdbcType.INTEGER),
+            @Result(column="create_time", property="createTime", jdbcType=JdbcType.TIMESTAMP),
+            @Result(column="update_time", property="updateTime", jdbcType=JdbcType.TIMESTAMP)
+    })
+    RedPacketInfo selectByRedPacketId(Long redPacketId);
+
     @UpdateProvider(type=RedPacketInfoSqlProvider.class, method="updateByExampleSelective")
     int updateByExampleSelective(@Param("record") RedPacketInfo record, @Param("example") RedPacketInfoExample example);
 
