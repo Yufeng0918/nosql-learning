@@ -1,10 +1,14 @@
 package com.yufeng.distributedlock.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.*;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.scripting.support.ResourceScriptSource;
 import org.springframework.stereotype.Service;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -20,6 +24,7 @@ public class RedisService {
 
     private static double size = Math.pow(2, 32);
 
+    private static final String bloomFilterName = "isVipBloom";
 
     /**
      * 写入缓存
@@ -353,5 +358,32 @@ public class RedisService {
         return result;
     }
 
+
+    public Boolean bloomFilterAdd(int value) {
+
+        DefaultRedisScript<Boolean> bloomAdd = new DefaultRedisScript<>();
+        bloomAdd.setScriptSource(new ResourceScriptSource(new ClassPathResource("bloomFilterAdd.lue")));
+        bloomAdd.setResultType(Boolean.class);
+
+        List<Object> keyList = new ArrayList<>();
+        keyList.add(bloomFilterName);
+        keyList.add(value + "");
+        Boolean result = (Boolean) redisTemplate.execute(bloomAdd, keyList);
+        return result;
+    }
+
+
+    public Boolean bloomFilterExist(int value) {
+
+        DefaultRedisScript<Boolean> bloomExist = new DefaultRedisScript<>();
+        bloomExist.setScriptSource(new ResourceScriptSource(new ClassPathResource("bloomFilterExist.lue")));
+        bloomExist.setResultType(Boolean.class);
+
+        List<Object> keyList = new ArrayList<>();
+        keyList.add(bloomFilterName);
+        keyList.add(value + "");
+        Boolean result = (Boolean) redisTemplate.execute(bloomExist, keyList);
+        return result;
+    }
 
 }

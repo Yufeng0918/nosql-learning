@@ -507,4 +507,17 @@ COMMENT '更新时间', PRIMARY KEY (`id`)
 - efficient query algo and less memory space
 - multiple hash function to generate multiple hash, one hash map to multiple bit position
 	+ if one of bit position return 0, it means item does not exist
-	+ if all hash function return 1, item may exist depends on error rate 
+	+ if all hash function return 1, item may exist depends on error rate
+#### Implementation
+- Google 
+    + store data in memory
+    + not support restart
+    + not support distributed application
+    + not support huge data
+- Redis
+    + IO consume
+    + extendable bloom filter
+    + support restart
+    + command
+        + add: BF.ADD key value
+        + exist: BF.EXISTS key value
