@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/redis_red_packet?useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull&autoReconnect=true&connectTimeout=3000&socketTimeout=1000
+    url: jdbc:mysql://localhost:3306/redis?useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull&autoReconnect=true&connectTimeout=3000&socketTimeout=1000
     username: root           # 需要学员自己修改填写
     password: password         # 需要学员自己修改填写
     type: com.alibaba.druid.pool.DruidDataSource

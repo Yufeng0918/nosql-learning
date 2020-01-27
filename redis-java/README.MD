@@ -187,8 +187,9 @@ $ make
         + No invoke rdbSaveBackgroud to fork sub thread to save
 + implementation
 + redis servercron schedule task to execute save
+
 ```
-# save "" to disallow RDB
+#### save "" to disallow RDB
 save 900 1 # after 900 sec, at least 1 keys change
 save 300 10, after 300 sec, at least 10 keys change
 save 60 10000, after 60 sec, at least 10000 keys change
@@ -197,10 +198,12 @@ stop-writes-on-bgsave-error yes
 rdbcompression yes
 rdbchecksum yes
 ```
+
 #### AOF
 + persist data by by appending log
 + syn by per operation
 + append to log file before shutdown
+
 ```
 # main config to open aof
 appendonly yes
@@ -226,6 +229,7 @@ auto-aof-rewrite-min-size 64m
 aof-load-truncated yes
 aof-rewrite-incremental-fsync yes
 ```
+
 #### AOF vs RDF
 - sequence
     - if aof exist, load aof
@@ -495,3 +499,12 @@ CREATE TABLE `red_packet_info` (
 COMMENT '更新时间', PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='红包信息表，新建一个红包插 入一条记录';
 ```
+
+
+## Boom Filter
+#### Overview
+- data structure check if item does not exist or may exist in high probabilities
+- efficient query algo and less memory space
+- multiple hash function to generate multiple hash, one hash map to multiple bit position
+	+ if one of bit position return 0, it means item does not exist
+	+ if all hash function return 1, item may exist depends on error rate 
