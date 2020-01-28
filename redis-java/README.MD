@@ -25,8 +25,8 @@
     + IO: base on NIO
         + [select and pull] linux 2.6, loop the file description
         + [epoll] linux 2.6+, ae_epoll.c only loop the read/write socket
-- Memcache
-    + multithread + lock
+- Memcached
+    + multi-thread + lock
 - Developed by C
     + Key-value
     + Row
@@ -182,8 +182,8 @@ $ make
 + auto save in shutdown, debug reload
 + manual save
 + save: blocking save
-+ bgsave: frok thread to save
-    + check if sub thread is runing aof or rdb
++ bgsave: fork thread to save
+    + check if sub thread is running aof or rdb
         + Yes, return error
         + No invoke rdbSaveBackgroud to fork sub thread to save
 + implementation
@@ -235,7 +235,7 @@ aof-rewrite-incremental-fsync yes
 - sequence
     - if aof exist, load aof
     - otherwise, load rdf
-- implmentation
+- implementation
     + rdf: snapshot of data
     + aof: records every operation
 - rdb
@@ -302,7 +302,7 @@ aof-rewrite-incremental-fsync yes
     + slaveof host port: slave to new master
 #### High Availability
 - Reserve Proxy: ngnix cluster via keeplived
-- Web Server: nginx auto dect the server unavaliable and redirect request to live sever
+- Web Server: ngnix auto detect the server unavaliable and redirect request to live sever
 - Cache: redis master to slave and sentinel
 - Database: master to slave
 #### Redis HA
@@ -525,12 +525,15 @@ COMMENT '更新时间', PRIMARY KEY (`id`)
 ***
 
 
-## Seccond Sale
+## Second Sale
 #### Overview
 - user order, redis to check inventroy
 - application verify order info and push order into MQ
 - application listen order info from queue and persist into DB
 #### Redis Design
-skuId_start: indicate if sec sale start
-skuId_count: product inventory
-skuId_acdess: request to buy the product
+- skuId_start: indicate if sec sale start
+- skuId_count: product inventory, require atomic operation
+- skuId_acdess: request to buy the product, number of request is limiting by rounding number, atomic operation does not require
+- bloom filter
+    + verify if user place order second times
+    

@@ -24,7 +24,6 @@ public class RedisService {
 
     private static double size = Math.pow(2, 32);
 
-    private static final String bloomFilterName = "isVipBloom";
 
     /**
      * 写入缓存
@@ -359,28 +358,28 @@ public class RedisService {
     }
 
 
-    public Boolean bloomFilterAdd(int value) {
+    public Boolean bloomFilterAdd(String filtername, int value) {
 
         DefaultRedisScript<Boolean> bloomAdd = new DefaultRedisScript<>();
         bloomAdd.setScriptSource(new ResourceScriptSource(new ClassPathResource("bloomFilterAdd.lua")));
         bloomAdd.setResultType(Boolean.class);
 
         List<Object> keyList = new ArrayList<>();
-        keyList.add(bloomFilterName);
+        keyList.add(filtername);
         keyList.add(String.valueOf(value));
         Boolean result = (Boolean) redisTemplate.execute(bloomAdd, keyList);
         return result;
     }
 
 
-    public Boolean bloomFilterExist(int value) {
+    public Boolean bloomFilterExist(String filtername, int value) {
 
         DefaultRedisScript<Boolean> bloomExist = new DefaultRedisScript<>();
         bloomExist.setScriptSource(new ResourceScriptSource(new ClassPathResource("bloomFilterExist.lua")));
         bloomExist.setResultType(Boolean.class);
 
         List<Object> keyList = new ArrayList<>();
-        keyList.add(bloomFilterName);
+        keyList.add(filtername);
         keyList.add(String.valueOf(value));
         Boolean result = (Boolean) redisTemplate.execute(bloomExist, keyList);
         return result;
@@ -397,5 +396,21 @@ public class RedisService {
         }
         return result;
     }
+
+
+
+    public boolean getAndincr(final String key) {
+
+        DefaultRedisScript<Boolean> bloomExist = new DefaultRedisScript<>();
+        bloomExist.setScriptSource(new ResourceScriptSource(new ClassPathResource("secSale.lua")));
+        bloomExist.setResultType(Boolean.class);
+
+        List<Object> keyList = new ArrayList<>();
+        keyList.add(String.valueOf(key));
+        Boolean result = (Boolean) redisTemplate.execute(bloomExist, keyList);
+        return result;
+    }
+
+
 
 }

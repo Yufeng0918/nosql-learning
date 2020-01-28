@@ -22,6 +22,8 @@ public class BloomFliterController {
     @Autowired
     private RedisService redisService;
 
+    private static final String bloomFilterName = "isVipBloom";
+
 
     @RequestMapping("/bloom/idExists")
     public boolean ifExists(int id) {
@@ -32,13 +34,13 @@ public class BloomFliterController {
     @RequestMapping("/bloom/redisIdAdd")
     public boolean redisAdd(int id) {
 
-        return redisService.bloomFilterAdd(id);
+        return redisService.bloomFilterAdd(bloomFilterName, id);
     }
 
     @RequestMapping("/bloom/redisIdExist")
     public boolean redisExist(int id) {
 
-        return redisService.bloomFilterExist(id);
+        return redisService.bloomFilterExist(bloomFilterName, id);
     }
 
 }

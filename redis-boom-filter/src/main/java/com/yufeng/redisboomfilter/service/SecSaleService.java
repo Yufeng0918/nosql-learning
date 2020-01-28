@@ -21,37 +21,47 @@ public class SecSaleService {
 
     private static final String SEC_SALE_ACCESS = "skuId_access_";
     private static final String SEC_SALE_COUNT = "skuId_count_";
+    private static final String SEC_SALE_FILTER = "skuId_bloomfilter_";
+    private static final String SEC_SALE_BOOKED = "skuId_booked_";
 
     @Autowired
     private RedisService redisService;
 
     public String secSale(int uid, int skuId) {
 
-        String isStart = (String) redisService.get(SEC_START_FLAG);
+        String isStart = (String) redisService.get(SEC_START_FLAG + skuId);
         if (!StringUtils.hasText(isStart)) {
             return "Not start yet";
         }
 
-        if (!isStart.contains("_")) {
+        if (!isStart.contains("_") && Integer.parseInt(isStart) != 1) {
             return "System error";
         }
 
 
-        Integer isStartInt = Integer.parseInt(isStart.split("_")[0]);
-        Integer isStartTime = Integer.parseInt(isStart.split("_")[1]);
-        if (isStartInt == 0) {
-            if (isStartTime > (new Date()).getTime() / 1000) {
-                return "Not start yet";
+        if (isStart.contains("_")) {
+            Integer isStartInt = Integer.parseInt(isStart.split("_")[0]);
+            Integer isStartTime = Integer.parseInt(isStart.split("_")[1]);
+            if (isStartInt == 0) {
+                if (isStartTime > (new Date()).getTime() / 1000) {
+                    return "Not start yet";
+                } else {
+                    redisService.set(SEC_START_FLAG + skuId, "1");
+                }
             } else {
-                redisService.set(SEC_START_FLAG + skuId, 1);
+                return "System error";
             }
-        } else {
-            return "System error";
         }
 
         String skuIdAccessName = SEC_SALE_ACCESS + skuId;
         String skuIdCountName = SEC_SALE_COUNT + skuId;
-        Integer accessNum = Integer.parseInt((String)redisService.get(skuIdAccessName));
+        String accessNumStr = (String) redisService.get(skuIdAccessName);
+        Integer accessNum = 0;
+        if (!StringUtils.hasText(accessNumStr)) {
+            accessNum = Integer.parseInt((String)redisService.get(skuIdAccessName));
+            redisService.incr(skuIdAccessName);
+        }
+
         Integer countNum = Integer.parseInt((String)redisService.get(skuIdCountName));
 
         if (countNum * 1.2 < accessNum) {
@@ -59,6 +69,19 @@ public class SecSaleService {
         } else {
             redisService.incr(skuIdAccessName);
         }
-        return "";
+
+        if (redisService.bloomFilterExist(SEC_SALE_FILTER + skuId, uid)) {
+            return "Item only can be purchased once";
+        } else {
+            redisService.bloomFilterAdd(SEC_SALE_FILTER + skuId, uid);
+        }
+
+
+        Boolean isSuccess = redisService.getAndincr(SEC_SALE_BOOKED + skuId);
+        if (isSuccess) {
+            return "Gongrate!";
+        }
+
+        return "Second Sale End!";
     }
 }

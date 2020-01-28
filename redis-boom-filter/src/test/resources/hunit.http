@@ -20,3 +20,11 @@ GET http://localhost:8080/bloom/redisIdExist?id=15
 Accept: application/json
 
 ###
+
+
+
+GET http://localhost:8080/redis/secsale?uid=1&skuId=1
+Accept: application/json
+
+###
+
