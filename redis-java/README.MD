@@ -38,12 +38,13 @@
     + Task Queue
     + State
 #### Installation
+```
 $ wget http://download.redis.io/releases/redis-5.0.5.tar.gz
 $ tar xzf redis-5.0.5.tar.gz
 $ cd redis-5.0.5
 $ make
-- update redis.conf 
-    + change daemonize from no to yes
+```
+- redis.conf: change daemonize from no to yes
 #### Command
 - ping
 - shutdown
@@ -521,3 +522,15 @@ COMMENT '更新时间', PRIMARY KEY (`id`)
     + command
         + add: BF.ADD key value
         + exist: BF.EXISTS key value
+***
+
+
+## Seccond Sale
+#### Overview
+- user order, redis to check inventroy
+- application verify order info and push order into MQ
+- application listen order info from queue and persist into DB
+#### Redis Design
+skuId_start: indicate if sec sale start
+skuId_count: product inventory
+skuId_acdess: request to buy the product

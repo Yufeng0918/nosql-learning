@@ -386,4 +386,16 @@ public class RedisService {
         return result;
     }
 
+    public boolean incr(final String key) {
+        boolean result = false;
+        try {
+            ValueOperations<Serializable, Object> operations = redisTemplate.opsForValue();
+            operations.increment(key,1);
+            result = true;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
 }
