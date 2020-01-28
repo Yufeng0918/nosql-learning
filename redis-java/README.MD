@@ -170,25 +170,24 @@ $ make
 ## Redis Persistence
 #### RDB Persist
 + persist data time interval
-+ RDB conf in "save" session, period for snapshot
++ RDB conf in "save" session, periodic snapshot
 + high performance
 + single file backup, fork the sub process with write-on-copy tech
 + may loss data in HA
 + load rdb file to restore the data
 + auto save in shutdown, debug reload
 + manual save
-+ save: blocking save
-+ bgsave: fork thread to save
-    + check if sub thread is running aof or rdb
-        + Yes, return error
-        + No invoke rdbSaveBackgroud to fork sub thread to save
-+ implementation
-+ redis servercron schedule task to execute save
+	+ save: blocking save
+	+ bgsave: fork thread to save
+   		+ check if sub thread is running aof or rdb
+       	+ Yes, return error
+        	+ No invoke rdbSaveBackgroud to fork sub thread to save
++ implementation: redis servercron schedule task to execute save
 
 ```
 #### save "" to disallow RDB
 save 900 1 # after 900 sec, at least 1 keys change
-save 300 10, after 300 sec, at least 10 keys change
+save 300 10, after/ 300 sec, at least 10 keys change
 save 60 10000, after 60 sec, at least 10000 keys change
 
 stop-writes-on-bgsave-error yes
@@ -214,9 +213,11 @@ appendfilename "appendonly.aof"
 # no: os backup if buffer is full
 appendfsync
 
+# ll prevent fsync() from being called in the main process while a BGSAVE or BGREWRITEAOF is in progress
 no-appendsync-on-rewrite no
 
-# trigger rewrite
+# trigger rewrite via calling BGREWRITEAOF
+# rewrite by percentage or min file zie
 auto-aof-rewrite-percentage 100
 auto-aof-rewrite-min-size 64m
 
@@ -424,7 +425,7 @@ spring.redis.lettuce.pool.max-wait=-1
 ***
 
 
-## Distributed Lock
+## Redis Distributed Lock
 #### Overview
 - Distributed Lock is lock for resourced shared by multiple instance of application
 - Only one instance can access the resource at that moment
@@ -452,7 +453,7 @@ spring.redis.lettuce.pool.max-wait=-1
  ***
  
  
- ## Expire Policy
+ ## Redis Expire Policy
  #### lazy expire
  - verify key expire when get the key
  - CPU friendly but memory consumption
@@ -498,7 +499,7 @@ COMMENT '更新时间', PRIMARY KEY (`id`)
 ```
 
 
-## Boom Filter
+## Google and Redis Bloom Filter
 #### Overview
 - data structure check if item does not exist or may exist in high probabilities
 - efficient query algo and less memory space
@@ -521,7 +522,7 @@ COMMENT '更新时间', PRIMARY KEY (`id`)
 ***
 
 
-## Second Sale
+## Redis Second Sale
 #### Overview
 - user order, redis to check inventroy
 - application verify order info and push order into MQ
@@ -532,4 +533,5 @@ COMMENT '更新时间', PRIMARY KEY (`id`)
 - skuId_acdess: request to buy the product, number of request is limiting by rounding number, atomic operation does not require
 - bloom filter
     + verify if user place order second times
+***
     
