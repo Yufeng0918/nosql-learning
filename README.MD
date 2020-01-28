@@ -103,6 +103,39 @@
 - Expire Policy
 - Cache penetration loading time
 - Security
+***
+
+
+## Cache Typical Production Issue
+#### Cache invalidation
+- cache expire by timer or application
+- db IO increase if cache expire
+- solution
+    + expire time policy: base + random
+    + cache does not expire at same time to reduce db IO
+#### Cache penetration
+- query data not in cache, request access db
+- invalid data access, e.g. access key does not exist
+- solution
+    + record invalid key which map to special value, store invalid key in isolate cache pool
+    + bloom filter
+        + bit array init all bit as 0
+        + hash key in k hash algo
+            + write: set k in differnt bit position as 1
+            + read
+                + if all bit position is 1, may exist
+                + if any bit position is not 1, does not exist
+        + store all valid key
+        + store all invalid key
+#### Cache avalanche   
+- cache node down cause whole cache sytem down   
+- cause
+    + no support rehash: cache node down, cache penetration to slow down application
+    + support rehash: node crash due to overload, key store to next node, next node crash
+- solution
+    + flag to access db: slow query failfast
+    + cache node in different server
+    + monitor cache performance
     
     
     
