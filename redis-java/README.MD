@@ -2,6 +2,7 @@
 
 ## Redis Overview
 #### Overview
+- Remote Dicitionary Server
 - NoSQL Not Only SQL, not relation database
 - Relationship database not efficient 
     + High concurrency
@@ -18,14 +19,24 @@
     + Graph
 - Feature
     + easy to scale via cluster
-    + free data model
+    + free data model, support multiple data structure
     + high currency and huge storage
-    + high availability
+    + high availability via cluster and master-slave
     + base on memory
     + single thread
     + IO: base on NIO
         + [select and pull] linux 2.6, loop the file description
         + [epoll] linux 2.6+, ae_epoll.c only loop the read/write socket
+    + support persist storage
+    + support lua and transaction
+- Fork thread
+    + AOF rewrite, sub thread rewrite aof temp, master append aof temp, replace aof temp to current aof
+    + RDB bgsave
+    + Sync build rdb
+- BIO thread
+    + fsync thread: persist data from memory to disk
+    + close thread: close, delete, freeup file
+    + cleanup thread: clean key, slot
 - Developed by C
     + Key-value
     + Row
@@ -51,6 +62,9 @@ $ make
     
     
 ## Redis DataType
+- support 8 datatype
+    + string, list, set, sorted set, hash
+    + bitmap, geo, HyperLoglog
 - start up
     + redis-server <config_file>
 - shutdown
