@@ -106,7 +106,7 @@
 ***
 
 
-## Cache Typical Production Issue
+## Cache Typical Production Issues
 #### Cache invalidation
 - cache expire by timer or application
 - db IO increase if cache expire
@@ -136,7 +136,34 @@
     + flag to access db: slow query failfast
     + cache node in different server
     + monitor cache performance
-    
+#### Cache inconstant
+- cache db data inconstant
+- cache copies data inconstant
+- solution
+    + retry update cache, put cache value into mq
+    + shorten cache expire
+#### Data Concurrent Compitetion
+- multiple request access same cache after cache expire
+- solution
+    + global lock to query cache data
+    + multiple copy
+#### Hot Key
+- hot key access by huge number of request
+- hot key store in one cache node, cache node over loaded
+- solution
+    + find hot key 
+    + distributed hotkey to hotkey#1, hotkey#2
+    + multiple slave or multiple cache layer
+    + hotkey store in local cache
+#### Big Key
+- big key consume bandwidth and IO
+- big key expire introduce db loading in long time
+- solution
+    + compress big key
+    + reallocate space for big key
+    + break big key into smaller key
+
+
     
     
     
