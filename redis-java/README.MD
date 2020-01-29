@@ -47,6 +47,10 @@
     + Cache
     + Task Queue
     + State
+- Default Setting
+    - redis.conf: change daemonize from no to yes
+    - default 16 database, default is 0 database
+    - select $i to switch database
 #### Installation
 ```
 $ wget http://download.redis.io/releases/redis-5.0.5.tar.gz
@@ -54,10 +58,6 @@ $ tar xzf redis-5.0.5.tar.gz
 $ cd redis-5.0.5
 $ make
 ```
-- redis.conf: change daemonize from no to yes
-#### Database
-- default 16 database, default is 0 database
-- select $i to switch database
 ***
     
     
