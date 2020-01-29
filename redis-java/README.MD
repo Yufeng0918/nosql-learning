@@ -375,7 +375,7 @@ $ make
 #### RDB Persist
 + persist data time interval by auto or manual
 + high performance but may loss data in HA
-+ single file backup, fork the sub process with write-on-copy tech
++ fork the sub process with write-on-copy tech to create single file backup
 + trigger point
     + master-slave
         + load rdb file to restore the data
@@ -452,14 +452,14 @@ aof-rewrite-incremental-fsync yes
 - implementation
     + rdf: snapshot of data
     + aof: records every operation
-- rdb
+- RDB
     + pos
         + higher performance, master thread does not participant IO
         + faster bootstrap
     + cons
         + rdf may lost data due to frequence
         + fork may takes longer time if data size is huge
-- aof
+- AOF
     + pos
         + safe in data backup
         + if aof file is too big, rewrite the file to minimize file size
@@ -467,6 +467,13 @@ aof-rewrite-incremental-fsync yes
     + cos
         + size is bigger
         + aof may slow than rdb
+- hyper RDB + AOF
+    + config aof-use-rdb-preamble
+    + fork sub thread to execute bgrewriteaof
+        + write RDB binary into aof
+        + append cmd into aof
+     + main thread replace old aof with new aof
+  
 ***        
         
   
