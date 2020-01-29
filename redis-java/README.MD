@@ -65,11 +65,9 @@ $ make
 - support 8 datatype
     + string, list, set, sorted set, hash
     + bitmap, geo, HyperLoglog
-- start up
+- start up & shutdown & connect
     + redis-server <config_file>
-- shutdown
     + redis-cli shutdown
-- connect
     + redis-cli
 - standard
     + type key
@@ -192,6 +190,152 @@ $ make
     + commands
         + pfadd $key $v1 $v2 $v3
         + pfcount $key
+ - Internal Data Structure
+    + redisDB
+        + main dict
+            + core dict: store all key/value
+            + expire dict: store expire key
+        + sub dict
+            + blocking dict: store blocking key or clients, e.g. blpop
+            + ready dict: store ready key or client, e.g. list insert item after blpop
+            + watched dict: watched key and clients
+        + all data store in redisObject
+    + redisObject
+        + Type: OBJ_STRING, OBJ_LIST, OBJ_SET, OBJ_ZSET, OBJ_HASH, OBJ_MODULE, OBJ_STREAM
+        + Encoding: OBJ_ENCODING_RAW, OBJ_ENCODING_INT, OBJ_ENCODING_HT
+        + lua
+        + Refcount
+        + Ptr: point to real object
+    + real oject
+        + dict
+            + ht[0]: daily access
+            + ht[1]: rehash
+            + every dictht contains dictEntry to resolve key hash conflict
+            + dictEntry
+                + key: sds
+                + value: redisObject
+            + real object for set or hash
+        + sds 
+            + simple dynamic string
+            + len: store lenght of string, get length is O(1)
+            + buf: dynamic extendable, binary safe
+            + real object for string, bitmap, hyperloglog
+        + ziplist
+            + zlbytes: total bytes
+            + zltail: bytes from tailer to header
+            + zllen: number of block
+            + entry: entry 1 to entry n
+                + prevRawLen
+                + len: current node length
+                + entryData
+            + zlend: 255 to indicate end of tailer
+            + relocate the space if ziplist growth too fast, good for small item and small list size
+            + real object for
+                + geo
+                + hash
+                    + hash_max_ziplist_entries 512
+                    + has_max_ziplist_value 64
+                + zset
+                    + zset_max_ziplist_entries 128
+                    + zset_max_ziplist_value 64
+        + quicklist
+            + quicklist + quicklistnode
+            + double linked list
+            + head/tail
+            + count
+            + len: ziplist node number
+            + compress: LZF compress algo
+            + real object for list
+        + zskiplist
+            + sorted collection, zset, geo
+            + zskiplist + zskiplistnode
+            + zskiplistnode has reference to other zskiplistnode
+            + real object for geo, zset that number is greater than threshold 
+***
+
+
+## Redis Protocal
+#### RESP
+- Redis Serialization Protoal
+- binary safe for client-server, binary safe means no parse operation to manipulate binary data
+#### Request & Response Model
+- Ping-Pong
+- Pipeline: one request, multiple response
+- Pub/Sub
+    + client sub channel
+    + server push data to channel
+#### Request & Response Format
+- request format
+    + inline command, e.g. comand param1 param2
+    + Array command, e.g. mget $k1 $k2
+- response format
+    + string
+        + start with "+"
+        + e.g. +OK\r\rn
+    + error
+        + start with "-"
+        + -UNKNOW
+    + integer
+        + start with ":"
+        + e.g. :1000
+    + bulk strings
+        + start with "$"
+        + e.g. "$6\r\nfoobar\r\n", length is 6
+    + list
+        + start with "*"
+        + e.g. "*3\r\n:1\r\n:2\r\n:3\r\n", return list of 3 items, "-1\r\n" is empty list
+#### Java Libraries
+- Jedis: simple
+- Redisson: seperation read and write
+#### Architecture
+![arch](./src/test/resources/redis_arch.png)
+- Event Handling (Blue)
+    + eventLoop
+        + time event
+            + time event linked list
+                + one time event
+                + perodic event
+            + serverCron
+            + moduleTimerHandler
+        + file event
+            + server listen coresponding event via open socket, below is Demultiplexer impelmentation
+                + Evport, Solaries
+                + Epoll, Linux
+                + Kqueue, Unix
+                + Select
+            + Dispatcher event to event handler
+                + collec event and then put into firedEvents
+                + EPOLLIN to AE_READABLE
+                + EPOLLOUT to AE_WRITABLE
+            + Event Handler
+                + new connection
+                    + acceptCommandHandler, maximum handle 1000 connection one time
+                    + create client and register
+                + request arrived
+                    + readQueryFromClient to read data into client's query buffer
+                    + parse command
+                    + get redisCommand from command table
+                    + execute command via redisCommand.proc()
+                    + write response into write buffer
+                + response echo
+                    + sendReplyToClient to handle response
+                    + flush client write buffer to IO
+            
+    + client
+        + maintain client status 
+    + redisCommands
+        + commands parse, validation and execution
+- Storage       
+   + redis contains multiple DB, each DB is redisDB structure
+   + all data stored in one of eight data type
+   + persist
+        + aof: append to buffer, buffer write into file
+        + rdb: snapshot of memory
+   + bio thread handling blocking IO operation, close(), fsync()
+   + eviction pool to garbage collection for expired keys  
+- Extendable Plugin
+    + RedisModule to handle system extendsion
+    + support cluster, master-slave
 ***
 
 
