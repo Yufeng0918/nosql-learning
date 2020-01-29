@@ -373,20 +373,19 @@ $ make
 
 ## Redis Persistence
 #### RDB Persist
-+ persist data time interval
-+ RDB conf in "save" session, periodic snapshot
-+ high performance
++ persist data time interval by auto or manual
++ high performance but may loss data in HA
 + single file backup, fork the sub process with write-on-copy tech
-+ may loss data in HA
-+ load rdb file to restore the data
-+ auto save in shutdown, debug reload
-+ manual save
-	+ save: blocking save
-	+ bgsave: fork thread to save
-   		+ check if sub thread is running aof or rdb
-       	+ Yes, return error
-        	+ No invoke rdbSaveBackgroud to fork sub thread to save
-+ implementation: redis servercron schedule task to execute save
++ trigger point
+    + master-slave
+        + load rdb file to restore the data
+    + auto save
+        + shutdown
+        + flushall
+    + manual save
+        + save: blocking save
+        + bgsave: fork thread to save
+    + redis servercron schedule task to execute save
 
 ```
 #### save "" to disallow RDB
@@ -398,12 +397,20 @@ stop-writes-on-bgsave-error yes
 rdbcompression yes
 rdbchecksum yes
 ```
-
++ rdb file
+    + version
+    + rd0, rd1.., rdx
+        + db-header
+        + data
+    + tailer
+        + lua
+        + magic
+        + chksum
 #### AOF
 + persist data by by appending log
-+ syn by per operation
 + append to log file before shutdown
-
++ aof in multibulk format
++ aof write op into buffer, then flush buffer into aof based on policy
 ```
 # main config to open aof
 appendonly yes
@@ -431,7 +438,13 @@ auto-aof-rewrite-min-size 64m
 aof-load-truncated yes
 aof-rewrite-incremental-fsync yes
 ```
-
++ aof rewrite
+    + bgwrite by manul
+    + auto-aof-rewrite by auto
+        + sub thread rewrite aof to temp file
+        + sub thread notify main thread done
+        + main thread rewrite aof to temp file
+        + replace temp file to aof file
 #### AOF vs RDF
 - sequence
     - if aof exist, load aof
@@ -657,18 +670,39 @@ spring.redis.lettuce.pool.max-wait=-1
  ***
  
  
- ## Redis Expire Policy
- #### lazy expire
- - verify key expire when get the key
- - CPU friendly but memory consumption
- - expireIfNeed()
- #### period expire
- - create timer to delete key
- #### Global Timer 
- - global timer to check key expire
- - CPU friendly and save memory space
-  - activeExpireCycle() by serverCron
- ****
+## Redis Expire Policy
+#### When key clean up
+- serverCron
+    + check expire dict to pick 20 key to check expire, clean up if key expire
+    + if more than 5 key expire, continue pick up samples
+    + if less than 5 key expire, stop clean up
+- hits memory threshold based on maxmemory setting
+    + clean up the key based on policy
+#### Eviction Method
+- sync
+- async
+    + used if lazyfree_lazy_expire configured
+    + clean up by BIO thread 
+    + collection size greater than 64
+#### Eviction Policy
+- noevicition
+    + default policy
+    + hit memory threshold
+- volatile-lru (least recently used)
+    + expire dict to calculate longest idle key
+    + put longest idle key to eviction pool
+- volatile-lfu (least freqently used)
+    + expire dict to calcualte least used key in certain period
+    + put least used key into eviction pool
+- volatile-ttl
+    + expire dict to calcualte earliest expire key
+    + put earliest expire key into eviction pool
+- volatile-random
+- allkeys-lru
+- allkeys-lfu    
+- allkeys-random
+- maxmemory-policy noeviction
+***
  
  
 ## RED PACKET Production
