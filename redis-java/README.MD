@@ -32,7 +32,7 @@
 - Fork thread
     + AOF rewrite, sub thread rewrite aof temp, master append aof temp, replace aof temp to current aof
     + RDB bgsave
-    + Sync build rdb
+    + Sync build rdb: build the full rdb allow slave to sync with master
 - BIO thread
     + fsync thread: persist data from memory to disk
     + close thread: close, delete, freeup file
@@ -83,69 +83,115 @@ $ make
     + ttl key, time to expire
     + exists key
 - String:
-    + set/get/del
-    + set $k $v, reset expire to -1
-    + getset $k $v, replace one value
-    + get $k
-    + del $k
-    + append $k $v
-    + strlen $k
-    + setnx $k $v, set the key if does not exist
-    + mset $k1 $v1 $k2 $v2 $k3 $v3, same as msetnx
-    + mget $k1 $k2 $k3
-    + getrange $k1 $start $end, index start from 0, end index is -1 is last index, including start and end
-    + setrange $k $offset, set the value from offset
-    + setex $k $expire $v, set value and exipre
-- Number:
-    + set $k $v
-    + incr/decr $k, atomic operation to increase or decrease 1
-    + incrby/decrby $k $v, atomic operation
+    + raw encoding in string, int encoding in number
+    + number stored as string as well
+    + allocate 2 * space if data less than 1MB, increase 1MB if string size bigger than 1MB
+    + commands
+        + set/get/del
+        + set $k $v, reset expire to -1
+        + getset $k $v, replace one value
+        + get $k
+        + del $k
+        + append $k $v
+        + strlen $k
+        + setnx $k $v, set the key if does not exist
+        + mset $k1 $v1 $k2 $v2 $k3 $v3, same as msetnx
+        + mget $k1 $k2 $k3
+        + getrange $k1 $start $end, index start from 0, end index is -1 is last index, including start and end
+        + setrange $k $offset, set the value from offset
+        + setex $k $expire $v, set value and exipre
+        + set $k $v
+        + incr/decr $k, atomic operation to increase or decrease 1
+        + incrby/decrby $k $v, atomic operation
 - List
     + double linked list, fast in header and tailer, pool performance based on index
-    + lpush/rpush $list [$val...], lpush add from header, rpush add from tailer
-    + lpop/rpop $list, if no element in list, list will be destoryed 
-    + llen $list
-    + lpushx $list [$val...], insert only list exists
-    + lrem $list $num [$val]
-        + positive number, delete number of value from header
-        + negative number, delete number of value from tailer
-        + 0, delete all number of value in list
-    + lset $list $index $value, set the value base on index, index starting from -1
-    + linsert $list before [$val1] [$val2], insert val2 before val1
-    + lrange $list $start $end
-    + lindex $list $index
+    + case scenario
+        + feed timeline
+        + news list
+    + commands
+        + lpush/rpush $list [$val...], lpush add from header, rpush add from tailer
+        + lpop/rpop $list, if no element in list, list will be destoryed 
+        + llen $list
+        + lpushx $list $val..., insert only list exists
+        + lrem $list $num $val
+            + positive number, delete number of value from header
+            + negative number, delete number of value from tailer
+            + 0, delete all number of value in list
+        + lset $list $index $value, set the value base on index, index starting from -1
+        + linsert $list before $val1 $val2, insert val2 before val1
+        + lrange $list $start $end
+        + lindex $list $index
+        + blpop/brpop blocking pop
 - Set
-    + no duplicated elements
-    + sadd $set [$val...]
-    + srem $set [$val...]
-    + smembers $set
-    + sismember $set [$val], check if contains value
-    + sdiff $set1 $set2, element in set1 but not in set2, diff set
-    + sinter $set1 $set2, element in set1 and set2, interset
-    + sunion $set1 $set2, all elements
-    + scard $set, return number of elements
-    + spop, pop element by random
-    + srandmember, pick element by random, not delete element in set
+    + no duplicated elements, efficient insert and query, O(1) complexity
+    + case scenario
+        + friends list
+        + relationship verification
+    + commands
+        + sadd $set $val...
+        + srem $set $val...
+        + smembers $set
+        + sismember $set $val, check if contains value
+        + sdiff $set1 $set2
+        + sinter $set1 $set2
+        + sunion $set1 $set2
+        + scard $set, return number of elements
+        + spop, pop element by random
+        + srandmember, pick element by random, not delete element in set
 - Hash
     + Map, key-value collection
-    + hset $hash $key $value
-    + hget $hash $key 
-    + hgetall $hash, return list by [k1, v1, k2, v2]
-    + hdel $hash $key
-    + hincrby/hdecrby $hash $key $value 
-    + hexists $hash $key
-    + hlen $hash
-    + hkeys $hash
-    + hvals $hash
+    + case scenario
+        + key to complexy object
+    + commands
+        + hset $hash $key $value
+        + hget $hash $key 
+        + hgetall $hash, return list by [k1, v1, k2, v2]
+        + hdel $hash $key
+        + hincrby/hdecrby $hash $key $value 
+        + hexists $hash $key
+        + hlen $hash
+        + hkeys $hash
+        + hvals $hash
 - Sorted Set
-    + score defined order
-    + zadd $set [$score $value, ...]
-    + zscore $set $val, 
-    + zrem $set $val
-    + zrange $set [$start $end] [withscores], min before max
-    + zrevrange $set [$start $end] [withscores], return list with v1, s1, v2, s2
-    + zrangebyscore $set score1 score2
-    + zincrby $set $score $val
+    + score defined order, no duplicated value but allow duplicated score, efficient in insert and query, O(1) complexity
+    + case scenario
+        + stats sorted item list
+        + grade table
+    + commands
+        + zadd $set $score $value
+        + zscore $set $val, 
+        + zrem $set $val
+        + zrange $set $start $end [withscores], min before max
+        + zrevrange $set $start $end [withscores], return list with v1, s1, v2, s2
+        + zrangebyscore $set score1 score2
+        + zincrby $set $score $val
+ - Bitmap
+    + bit array, each position is 0 or 1
+    + case scenario
+        + last n day records
+        + news, feed, users flag
+    + commands
+        + setbit $bitmap $offset $v
+        + getbit $bitmap $offset
+- GEO
+    + wrapper by sorted sort, convert two demssion longitude and latitude to one demssion (52 bit)
+    + one demssion as score, efficient in calculation
+    + case scenario
+        + query location
+        + calculate distance between two location
+        + find nearby
+    + commands
+        + geoadd $key $longitude $latitude $member
+        + geopos $key $member
+        + geodist $key $mem1 $mem2
+- HyperLogLog
+    + no store row data, store only stats, allow certain error range
+    + case scenario
+        + total visit users
+        + stats search words by user
+    + commands
+        + pfadd $key $v1 $v2 $v3
+        + pfcount $key
 ***
 
 
