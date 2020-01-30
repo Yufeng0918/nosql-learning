@@ -162,11 +162,68 @@
     + compress big key
     + reallocate space for big key
     + break big key into smaller key
+***
 
 
-    
-    
-    
 ## [Redis](./redis-java/README.MD)
+***
+
+## CAP
+#### Factors
+- Consistency
+    + all nodes see the same data at same time
+- Availability
+    + reads and writes always successd
+- Partition Tolerance
+    + system continue to operate depite arbitary message loss or failure of part of the system
+#### CP vs AP
+- distributed system can not fulfill CA since distributed system is mutli instance
+- distrubuted system may choose CP or AP in different business
+- CP
+    + stop the service if inconsistant between node
+    + financial, payment industry
+- AP
+    + return different data, tolerence consistant
+    + user friendly
+#### CAP Extension
+- BASE
+    + Baiscally Available
+        + core function response, lose minor function
+        + system may slow down
+    + Soft state
+        + allow inconsistency between partition but no impact to core function
+    + Eventual Consistency
+        + inconsistency during error occur
+        + production restore, application back to consistent
+- Data Consistent
+    + distribute transaction
+        + check all the transaction execute, then commit transactions
+        + 2 pharse commit
+    + master-slave
+    + message bus
+        + message publish to partition
+        + partition listen message from queue
+***
+
+
+## Distributed Cached Proposal
+![dis](./redis-java/src/test/resources/distriubute_cached.png)
+- proxy
+    + based on business line
+    + different redis node
+        + base on key in different namespace
+        + base on business in different port
+- redis node
+    + store cache but not slot
+    + no store slot-key to save 20% space
+- config-server
+    + config reading for proxy
+- clusterManager
+    + SLA monitor node instance, error alter
+    + mapping cache to business
+        + cached to domain name
+        + node instance monitor
+    + register to config-server
+
 
 

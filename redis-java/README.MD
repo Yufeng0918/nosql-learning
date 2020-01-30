@@ -9,8 +9,12 @@
     + Huge storage
     + High scalability & High Availability
 - Product
-    + Redis: single thread + NIO (select + epull)
-    + Memcached: multi-thread + lock
+    + Redis
+        + single thread + NIO (select + epull)
+        + 100,000 - 120,000 QPS
+    + Memcached
+        + multi-thread + lock
+        + 1,000,000 QPS
     + MongoDB
 - Storage
     + Key-Value
@@ -33,10 +37,13 @@
     + AOF rewrite, sub thread rewrite aof temp, master append aof temp, replace aof temp to current aof
     + RDB bgsave
     + Sync build rdb: build the full rdb allow slave to sync with master
-- BIO thread
-    + fsync thread: persist data from memory to disk
-    + close thread: close, delete, freeup file
-    + cleanup thread: clean key, slot
+- BIO thread (Background IO)
+    + main thread is producer to put tasks into queue
+    + bio thread is consumer to consume task from queue
+    + redis start 3 bio thread and init 3 task queue
+        + fsync: persist buffer from memory to disk
+        + close: close, delete, freeup file
+        + lazy free: clean key, slot
 - Developed by C
     + Key-value
     + Row
@@ -479,53 +486,36 @@ aof-rewrite-incremental-fsync yes
   
 ## Redis Master Slave
 #### Separation of Read & Write
-- Master-Slaver
-    + master: write
-    + slave: read
-    + disaster recovery   
-- Config
-    + slave include master config
-    + daemonize yes
-    + pidfile
-    + port
-    + log file name
-    + dump.rdb file name
-    + appendonly
-    + slaveof master port
+- Master
+    + write data
+    + config: slaveof no one
 - Slave
+    + read data
+    + slave may have many slaves
     + slaveof master_host master_port, e.g. slaveof localhost 6379
-    + copy the full set of data
-    + slave may have slave to unload the master sync operation
-    + connect master and sent sync command
-    + master send the rdb file to slave
-    + slave reload rdb file
-    + synchronization
-        + SYNC
-            + before redis2.8
-            + master execute BSSAVE to generate RDB, consume master CPU, memory, IO
-            + master send the RDB to slave, consume bandwidth
-            + slave receive RDB and load RDB, block IO
-        + PSYNC 
-            + after redis2.8
-            + master and slave maintains replication offset
-            + master write data into replication backlog, default size 1M
-            + slave connect to master to compare the master ID connected and disconnected before
-            + master received slaveof command, slave compare master ID
-                + if this is 1st time connect to master, slave send PSYNC?-1 to do the FULLREPSYNC
-                + if this is not 1st time connect to master, slave send PSYNC runid offset to do the PartialSYNC
-                    + but if backlog is over 1M, slave need to do the FULLRESYNC
-                + repl-disable-tcp-nodelay
-                    + set to yes, delay in sync but save bandwidth, default is 40ms
-                    + set to no, less delay but increase bandwidth
-    + info replication to check master slave
-- Mannul Recovery
-    + slaveof no one: slave become master
-    + slaveof host port: slave to new master
-#### High Availability
-- Reserve Proxy: ngnix cluster via keeplived
-- Web Server: ngnix auto detect the server unavaliable and redirect request to live sever
-- Cache: redis master to slave and sentinel
-- Database: master to slave
+- Synchronization
+    + SYNC
+        + before redis2.8
+        + full sync via rdb + repl buf
+        + master echo fullresync to slave
+        + master execute BSSAVE to generate RDB
+        + master send the RDB and repl buf to slave
+        + slave receive RDB and create its own RDB
+        + slave clean up old data, load RDB and then connect to master
+        + slave receive aof from master and write to its own aof
+    + PSYNC 
+        + after redis2.8
+        + increamental sync via repl buf
+        + master and slave maintains replication offset
+        + master write data into replication backlog, default size 1M
+        + master has replId (itself) and slave has replId (master Id)
+        + slave connect to master to send the psync command with replId and offset
+        + master received slaveof command, slave compare master ID
+            + if replId is same and offset still in replication backlog, master will send command after offset to complete increament sync
+            + if replId is differnt or offset is not in replication backlog, master echo fullresync to slave to start full sync
+            + repl-disable-tcp-nodelay
+                + set to yes, delay in sync but save bandwidth, default is 40ms
+                + set to no, less delay but increase bandwidth
 #### Redis HA
 - Seninel monitor all servers
 - Sentinel
@@ -606,18 +596,45 @@ spring.redis.lettuce.pool.min-idle=5
 spring.redis.lettuce.pool.max-wait=-1
 ```
 #### Cluster Implementation
-- redis 
+- client sharding
+    + client decide value store into which cache node
+    + module hash or consistent hash
+    + client connect redis based domain for DR or scale up/down
+    + not friendly in resharding
+- proxy sharding
+    + client connect to proxy
+    + proxy hash key and request different redis node, then return response to client
+    + Twemproxy
+        + simple, stable
+        + not efficient in multi key
+        + no support scale up/down
+    + Codis
+        + codis-server is extendable from redis
+        + codis-client is proxy
+        + zookeeper keep the cluster meta info
+        + codis-dashboard monitor redis node and proxy
+        + may performance downgrade 5% - 10%
+- native redis cluster
     - redis cluster only after 3.0
-    - Gossip generate ping/pong
-    - blocking IO may counter issue when dynamic scale up
-- principal
-    - horizontal sharding or vetical sharding
-        + horizontal sharding to distrubted data in different server
-        + Twemproxy from twitter
-            + hash key and store data in different server
-    - disaster recover
-        + gossip to implment slave and master and replace master by slave in disaster
-#### Constant Hash
+    - contains 16374 slot
+    - easy to scale up
+    - resharding by addslots, delslots
+    - redis node contains communicate other redis node via gossip protocal
+    - client
+        + client send request to one redis node
+        + redis node parse command and allocate slot via crc16(key) & 0x3FFF
+        + redis node return result if slot is in local
+        + redis node return host/port and client redirect request to correct redis node
+    - scale up
+        + cluster meet $host $port
+        + cluster setslot $slot importing $desNodeId
+        + cluster setslot $slot migrating $srcNodeId
+        + cluster getkeysinslot $slot $count
+        + migrate $host $port $key $dbid timeout
+    - migrate slot block IO in source node
+        + may result redis pause
+        + no impact to other slot
+#### Consistent Hash
 - hash 
     + hash value and mod by 2^32
     + there is n nodes, each node holds 2^32/4
@@ -633,19 +650,6 @@ spring.redis.lettuce.pool.max-wait=-1
 - visual node distribution
     + server has serval visual node
     + visual node distributed equaly in hash ring
-#### Twemproxy
-- proxy server support redis and client
-- shading key into hash and distribute in different redis master and slave
-- dynamic delete the failure node
-- support hash algo
-    + md5, crc16, crc32, crc32a, murmur
-- support shading algo
-    + ketama, modula, random
-- client only communicate with proxy instead of redis master and slave
-#### Production Practise
-- enable rdb and aof
-- turn off persist if no sensitive info
-- enable cluster or master slave
 ***
 
 
@@ -769,7 +773,12 @@ COMMENT '更新时间', PRIMARY KEY (`id`)
 
 ## Redis Second Sale
 #### Overview
-- user order, redis to check inventroy
+![design](./src/test/resources/sec_sale.png)
+- CDN: web page or javascript preload
+- user cache: stored black listed user or zombie user based on history
+- access cache: inaccurate access request to second sale
+- product cache: sec sale product
+- inventory cache: atomic operation to check and decr inventory
 - application verify order info and push order into MQ
 - application listen order info from queue and persist into DB
 #### Redis Design
